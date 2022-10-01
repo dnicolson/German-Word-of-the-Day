@@ -1,0 +1,23 @@
+{
+  "pins" : [
+    {
+      "identity" : "launchatlogin",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sindresorhus/LaunchAtLogin",
+      "state" : {
+        "branch" : "main",
+        "revision" : "d473e169537169cc0442d6d88a0f9a9daf9d4f6f"
+      }
+    },
+    {
+      "identity" : "swiftsoup",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/scinfu/SwiftSoup.git",
+      "state" : {
+        "revision" : "6778575285177365cbad3e5b8a72f2a20583cfec",
+        "version" : "2.4.3"
+      }
+    }
+  ],
+  "version" : 2
+}
