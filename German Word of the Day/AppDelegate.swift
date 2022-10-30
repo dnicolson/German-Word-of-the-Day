@@ -118,17 +118,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let sourceClass: Source.Type = NSClassFromString(className) as! Source.Type
 
         Task {
-            do {
-                let (word, translation, type, examples) = try await sourceClass.fetchSource()
-                DispatchQueue.main.async { [self] in
-                    updateDefinition(word: word, translation: translation, type: type, examples: examples)
-                    timer = Timer.scheduledTimer(withTimeInterval: 60 * 60, repeats: false) { [self] _ in
-                        cycleSource()
-                        updateSource()
-                    }
+            let (word, translation, type, examples) = await {
+                do {
+                    return try await sourceClass.fetchSource()
+                } catch {
+                    print("Request failed with error: \(error)")
+                    return ("⚠️", error.localizedDescription, "", "")
                 }
-            } catch {
-                print("Request failed with error: \(error)")
+            }()
+
+            DispatchQueue.main.async { [self] in
+                updateDefinition(word: word, translation: translation, type: type, examples: examples)
+                let interval: TimeInterval = word == "⚠️" ? 10 : 60 * 60
+                timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [self] _ in
+                    cycleSource()
+                    updateSource()
+                }
             }
         }
     }
