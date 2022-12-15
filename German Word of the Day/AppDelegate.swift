@@ -163,7 +163,7 @@ a {text-decoration: none !important;}
 * {font-family:system-ui;padding:0;}
 .word {color:\(textColor);font-size:13px;padding:6px 0;max-width:150px;}
 .type {color:\(secondaryTextColor);font-size:13px;padding:6px 0;vertical-align:top;}
-.examples {color:\(textColor);font-size:12px;}
+.examples {color:\(textColor);font-size:12px;font-style:italic;}
 .examples p {margin-bottom:6px;}
 .source {color:\(secondaryTextColor);font-size:11px;padding-top:6px;padding-right:13px;}
 </style>
