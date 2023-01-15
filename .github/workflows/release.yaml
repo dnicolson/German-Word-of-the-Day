@@ -1,0 +1,22 @@
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions: write-all
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Build
+      run: xcodebuild build -scheme "German Word of the Day" -configuration Release -derivedDataPath $GITHUB_WORKSPACE
+    - name: Archive
+      run: |
+        mv "$GITHUB_WORKSPACE/Build/Products/Release/German Word of the Day.app" $GITHUB_WORKSPACE
+        zip -r German_Word_of_the_Day.zip "German Word of the Day.app"
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: German_Word_of_the_Day.zip
