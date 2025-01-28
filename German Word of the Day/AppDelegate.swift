@@ -191,6 +191,7 @@ a {text-decoration: none !important;}
         textView.textStorage?.setAttributedString(definition)
         textView.textContainer?.lineFragmentPadding = 0
         textView.backgroundColor = .clear
+        textView.insertionPointColor = .clear
         
         let view = NSView()
         view.frame = CGRect(x: 0, y: 0, width: width, height: height - 12)
