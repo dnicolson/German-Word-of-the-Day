@@ -19,7 +19,7 @@ class GermanEveryday: Source {
         let body: String = try doc.select("item")[0].getAllElements()[8].text()
         let partOfSpeech: String = try doc.select("item category")[0].text().lowercased()
         
-        let pattern = "<p>(.*?) : (.*?)</p>.*<p>(.*?)</p>.*<em>(.*?)<"
+        let pattern = "<p>(.*?) : (.*?)</p>.*?<p>(.*?)</p>.*?<p>(.*?)</em></p>"
         let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
         
         var word: String = ""
