@@ -46,14 +46,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let button = statusItem.button {
             button.title = "🇩🇪"
         }
+
+        let discoveredSources = getSources()
+        var savedSources = (UserDefaults.standard.array(forKey: "Sources") as? [[String: Any]]) ?? []
         
-        if (UserDefaults.standard.array(forKey: "Sources") == nil) {
-            var sources: [[String: AnyObject]] = []
-            for source in getSources() {
-                sources.append(["name": source, "state": true] as [String: AnyObject])
+        for sourceName in discoveredSources {
+            if !savedSources.contains(where: { $0["name"] as? String == sourceName }) {
+                savedSources.append(["name": sourceName, "state": true])
             }
-            UserDefaults.standard.set(sources, forKey: "Sources")
         }
+        
+        UserDefaults.standard.set(savedSources, forKey: "Sources")
 
         cycleSource()
         updateSource()
@@ -70,18 +73,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func getSources() -> [String] {
         let expectedClassCount = objc_getClassList(nil, 0)
         let allClasses = UnsafeMutablePointer<AnyClass>.allocate(capacity: Int(expectedClassCount))
-        let autoreleasingAllClasses = AutoreleasingUnsafeMutablePointer<AnyClass>(allClasses)
-        let actualClassCount:Int32 = objc_getClassList(autoreleasingAllClasses, expectedClassCount)
-
-        var classes = [AnyClass]()
+        let actualClassCount = objc_getClassList(AutoreleasingUnsafeMutablePointer(allClasses), expectedClassCount)
+        
+        let moduleName = Bundle.main.infoDictionary!["CFBundleName"] as! String
+        let modulePrefix = moduleName.replacingOccurrences(of: " ", with: "_") + "."
+        
+        var sources: [String] = []
+        
         for i in 0 ..< actualClassCount {
             let currentClass: AnyClass = allClasses[Int(i)]
-            if currentClass.self is Source.Type {
-                classes.append(currentClass)
+            let className = NSStringFromClass(currentClass)
+            
+            guard className.hasPrefix(modulePrefix) else { continue }
+            
+            if let sourceClass = currentClass as? Source.Type {
+                sources.append(sourceClass.name)
             }
         }
-
-        return classes.map { ($0 as! Source.Type).name }
+        
+        allClasses.deallocate()
+        
+        return sources
     }
     
     func cycleSource() {
