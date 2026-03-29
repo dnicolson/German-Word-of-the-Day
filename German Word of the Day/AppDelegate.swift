@@ -50,6 +50,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let discoveredSources = getSources()
         var savedSources = (UserDefaults.standard.array(forKey: "Sources") as? [[String: Any]]) ?? []
         
+        savedSources.removeAll { source in
+            !discoveredSources.contains(source["name"] as! String)
+        }
+        
         for sourceName in discoveredSources {
             if !savedSources.contains(where: { $0["name"] as? String == sourceName }) {
                 savedSources.append(["name": sourceName, "state": true])
