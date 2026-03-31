@@ -57,21 +57,26 @@ class Deutsched: Source {
             throw NSError(domain: "Deutsched", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not parse Deutsched archive entry for \(archiveDay)."])
         }
         
-        let word = String(body[wordRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawWord = String(body[wordRange]).trimmingCharacters(in: .whitespacesAndNewlines)
         let translation = String(body[translationRange]).capitalizingFirstLetter()
         let sentenceGerman = String(body[sentenceGermanRange]).trimmingCharacters(in: .whitespacesAndNewlines)
         let sentenceEnglish = String(body[sentenceEnglishRange]).trimmingCharacters(in: .whitespacesAndNewlines)
         let examples = "\(sentenceGerman)\n\(sentenceEnglish)"
-        let lowercaseWord = word.lowercased()
+        let lowercaseWord = rawWord.lowercased()
+        let word = rawWord.replacingOccurrences(
+            of: #"\s+\((?:v|adj|adv)\.\)$"#,
+            with: "",
+            options: [.regularExpression, .caseInsensitive]
+        )
         
         let type: String
         if lowercaseWord.hasPrefix("der ") || lowercaseWord.hasPrefix("die ") || lowercaseWord.hasPrefix("das ") {
             type = "Noun"
-        } else if word.contains("(v.)") {
+        } else if lowercaseWord.contains("(v.)") {
             type = "Verb"
-        } else if word.contains("(adj.)") {
+        } else if lowercaseWord.contains("(adj.)") {
             type = "Adjective"
-        } else if word.contains("(adv.)") {
+        } else if lowercaseWord.contains("(adv.)") {
             type = "Adverb"
         } else {
             type = ""
