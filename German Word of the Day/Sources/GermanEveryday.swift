@@ -42,8 +42,8 @@ class GermanEveryday: Source {
         
         let pattern = "<p>(.*?) : (.*?)</p>.*?<p>(.*?)</p>.*?<p>(.*?)</em></p>"
         let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
-        let fallbackPattern = #"^\s*(.+)\s+([A-ZÄÖÜ„"“‚'].+?[.!?])\s*([A-Z"“].+?)\s*$"#
-        let fallbackRegex = try? NSRegularExpression(pattern: fallbackPattern, options: .caseInsensitive)
+        let fallbackPattern = #"^\s*(.+?)\s+([A-ZÄÖÜ„"“‚'].+?[.!?])\s*([A-Z"“].+?)\s*$"#
+        let fallbackRegex = try? NSRegularExpression(pattern: fallbackPattern)
         
         var word: String = ""
         var translation: String = ""
