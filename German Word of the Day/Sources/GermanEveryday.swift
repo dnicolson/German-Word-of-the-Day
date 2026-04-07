@@ -42,18 +42,14 @@ class GermanEveryday: Source {
         
         let pattern = "<p>(.*?) : (.*?)</p>.*?<p>(.*?)</p>.*?<p>(.*?)</em></p>"
         let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
-        let fallbackPattern = #"^\s*(.+?)\s+([A-ZÄÖÜ„"“‚'].+?[.!?])\s*([A-Z"“].+?)\s*$"#
+        let fallbackPattern = #"^\s*(.+?)\s+([„"“‚']?[A-ZÄÖÜ][^)\s.!?]*\s+[a-zäöüß].+?[.!?])\s*([A-Z"“].+?)\s*$"#
         let fallbackRegex = try? NSRegularExpression(pattern: fallbackPattern)
         
-        var word: String = ""
+        let word: String = try doc.select("item title")[0].text()
         var translation: String = ""
         var sentenceGerman: String = ""
         var sentenceEnglish: String = ""
         if let match = regex?.firstMatch(in: body, options: [], range: NSRange(location: 0, length: body.utf16.count)) {
-            if let wordRange = Range(match.range(at: 1), in: body) {
-                word = String(body[wordRange])
-            }
-            
             if let translationRange = Range(match.range(at: 2), in: body) {
                 translation = String(body[translationRange]).capitalizingFirstLetter()
             }
@@ -65,20 +61,29 @@ class GermanEveryday: Source {
             if let sentenceEnglishRange = Range(match.range(at: 4), in: body) {
                 sentenceEnglish = String(body[sentenceEnglishRange])
             }
-        } else if let match = fallbackRegex?.firstMatch(in: body, options: [], range: NSRange(location: 0, length: body.utf16.count)) {
-            if let translationRange = Range(match.range(at: 1), in: body) {
-                translation = String(body[translationRange]).capitalizingFirstLetter()
+        } else {
+            let bodyWithoutWordPrefix: String
+            if body.hasPrefix("\(word) : ") {
+                bodyWithoutWordPrefix = String(body.dropFirst(word.count + 3))
+            } else {
+                bodyWithoutWordPrefix = body
             }
             
-            if let sentenceGermanRange = Range(match.range(at: 2), in: body) {
-                sentenceGerman = String(body[sentenceGermanRange])
+            if let match = fallbackRegex?.firstMatch(in: bodyWithoutWordPrefix, options: [], range: NSRange(location: 0, length: bodyWithoutWordPrefix.utf16.count)) {
+                if let translationRange = Range(match.range(at: 1), in: bodyWithoutWordPrefix) {
+                    translation = String(bodyWithoutWordPrefix[translationRange]).capitalizingFirstLetter()
+                }
+                
+                if let sentenceGermanRange = Range(match.range(at: 2), in: bodyWithoutWordPrefix) {
+                    sentenceGerman = String(bodyWithoutWordPrefix[sentenceGermanRange])
+                }
+                
+                if let sentenceEnglishRange = Range(match.range(at: 3), in: bodyWithoutWordPrefix) {
+                    sentenceEnglish = String(bodyWithoutWordPrefix[sentenceEnglishRange])
+                }
+            } else if bodyWithoutWordPrefix != body {
+                translation = bodyWithoutWordPrefix.capitalizingFirstLetter()
             }
-            
-            if let sentenceEnglishRange = Range(match.range(at: 3), in: body) {
-                sentenceEnglish = String(body[sentenceEnglishRange])
-            }
-            
-            word = try doc.select("item title")[0].text()
         }
         
         let type = partOfSpeech.capitalizingFirstLetter()
