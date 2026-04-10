@@ -40,6 +40,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var definitionMenuItem: NSMenuItem!
     var activeSource: String!
     var timer = Timer()
+    var isMenuOpen = false
+    var pendingStatusItemTitle: String?
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -75,7 +77,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func setStatusItemTitle(_ title: String) {
+        if isMenuOpen {
+            pendingStatusItemTitle = title
+            return
+        }
+
         statusItem.button?.title = title
+        pendingStatusItemTitle = nil
     }
     
     func getSources() -> [String] {
@@ -269,13 +277,19 @@ a {text-decoration: none !important;}
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        isMenuOpen = true
         if let button = statusItem.button {
             statusItem.length = button.frame.width
         }
     }
 
     func menuDidClose(_ menu: NSMenu) {
+        isMenuOpen = false
         statusItem.length = NSStatusItem.variableLength
+        if let pendingStatusItemTitle {
+            statusItem.button?.title = pendingStatusItemTitle
+            self.pendingStatusItemTitle = nil
+        }
     }
 
     @objc func didSelectOpenAtLogin(_ sender: NSMenuItem) {
