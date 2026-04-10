@@ -34,14 +34,12 @@ protocol Source {
     static func fetchSource() async throws -> (String, String, String, String)
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate {
     
     var statusItem: NSStatusItem!
     var definitionMenuItem: NSMenuItem!
     var activeSource: String!
     var timer = Timer()
-    var isMenuOpen = false
-    var pendingStatusItemTitle: String?
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -74,16 +72,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     @objc func interfaceModeChanged(sender: NSNotification) {
         updateSource()
-    }
-
-    func setStatusItemTitle(_ title: String) {
-        if isMenuOpen {
-            pendingStatusItemTitle = title
-            return
-        }
-
-        statusItem.button?.title = title
-        pendingStatusItemTitle = nil
     }
     
     func getSources() -> [String] {
@@ -133,7 +121,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func updateSource() {
         if activeSource == nil, let menuItem = definitionMenuItem, let button = statusItem.button {
-            setStatusItemTitle("🇩🇪")
+            button.title = "🇩🇪"
             menuItem.title = ""
             menuItem.view = nil
             return
@@ -167,7 +155,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     
     func updateDefinition(word: String, translation: String, type: String, examples: String) {
-        setStatusItemTitle(word)
+        if let button = statusItem.button {
+            button.title = word
+        }
         if let menuItem = definitionMenuItem {
             menuItem.view = definitionView(translation: translation, type: type, examples: examples)
         }
@@ -249,7 +239,6 @@ a {text-decoration: none !important;}
     
     func setupMenus() {
         let menu = NSMenu()
-        menu.delegate = self
                 
         definitionMenuItem = NSMenuItem()
         definitionMenuItem.title = ""
@@ -274,22 +263,6 @@ a {text-decoration: none !important;}
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         statusItem.menu = menu
-    }
-
-    func menuWillOpen(_ menu: NSMenu) {
-        isMenuOpen = true
-        if let button = statusItem.button {
-            statusItem.length = button.frame.width
-        }
-    }
-
-    func menuDidClose(_ menu: NSMenu) {
-        isMenuOpen = false
-        statusItem.length = NSStatusItem.variableLength
-        if let pendingStatusItemTitle {
-            statusItem.button?.title = pendingStatusItemTitle
-            self.pendingStatusItemTitle = nil
-        }
     }
 
     @objc func didSelectOpenAtLogin(_ sender: NSMenuItem) {
