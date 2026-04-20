@@ -35,13 +35,18 @@ class GermanEveryday: Source {
         
         let configuration = URLSessionConfiguration.ephemeral
         let (data, _) = try await URLSession(configuration: configuration).data(from: url!)
-        
-        let doc: Document = try SwiftSoup.parse(String(data: data, encoding: .utf8)!)
-        let body: String = try doc.select("item")[0].getAllElements()[8].text()
+
+        let xml = String(data: data, encoding: .utf8) ?? ""
+        let doc: Document = try SwiftSoup.parse(xml)
+        let bodyPattern = #"<content:encoded><!\[CDATA\[(.*?)\]\]></content:encoded>"#
+        let bodyRegex = try? NSRegularExpression(pattern: bodyPattern, options: [.dotMatchesLineSeparators])
+        let bodyMatch = bodyRegex?.firstMatch(in: xml, options: [], range: NSRange(location: 0, length: xml.utf16.count))
+        let bodyHTML = bodyMatch.flatMap { Range($0.range(at: 1), in: xml).map { String(xml[$0]) } } ?? ""
+        let body: String = bodyHTML.isEmpty ? try doc.select("item description")[0].text() : try SwiftSoup.parseBodyFragment(bodyHTML).text()
         let partOfSpeech: String = try doc.select("item category")[0].text().lowercased()
         
         let pattern = "<p>(.*?) : (.*?)</p>.*?<p>(.*?)</p>.*?<p>(.*?)</em></p>"
-        let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+        let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive, .dotMatchesLineSeparators])
         let fallbackPattern = #"^\s*(.+?)\s+([„"“‚']?[A-ZÄÖÜ][^)\s.!?]*\s+[a-zäöüß].+?[.!?])\s*([A-Z"“].+?)\s*$"#
         let fallbackRegex = try? NSRegularExpression(pattern: fallbackPattern)
         
@@ -49,17 +54,17 @@ class GermanEveryday: Source {
         var translation: String = ""
         var sentenceGerman: String = ""
         var sentenceEnglish: String = ""
-        if let match = regex?.firstMatch(in: body, options: [], range: NSRange(location: 0, length: body.utf16.count)) {
-            if let translationRange = Range(match.range(at: 2), in: body) {
-                translation = String(body[translationRange]).capitalizingFirstLetter()
+        if let match = regex?.firstMatch(in: bodyHTML, options: [], range: NSRange(location: 0, length: bodyHTML.utf16.count)) {
+            if let translationRange = Range(match.range(at: 2), in: bodyHTML) {
+                translation = String(bodyHTML[translationRange]).capitalizingFirstLetter()
             }
             
-            if let sentenceGermanRange = Range(match.range(at: 3), in: body) {
-                sentenceGerman = String(body[sentenceGermanRange])
+            if let sentenceGermanRange = Range(match.range(at: 3), in: bodyHTML) {
+                sentenceGerman = String(bodyHTML[sentenceGermanRange])
             }
             
-            if let sentenceEnglishRange = Range(match.range(at: 4), in: body) {
-                sentenceEnglish = String(body[sentenceEnglishRange])
+            if let sentenceEnglishRange = Range(match.range(at: 4), in: bodyHTML) {
+                sentenceEnglish = String(bodyHTML[sentenceEnglishRange])
             }
         } else {
             let bodyWithoutWordPrefix: String
