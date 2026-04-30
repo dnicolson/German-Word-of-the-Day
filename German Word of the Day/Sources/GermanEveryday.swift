@@ -10,20 +10,55 @@ import SwiftSoup
 
 class GermanEveryday: Source {
     static var name: String = "German Everyday"
+
+    private static func paragraphTexts(from bodyHTML: String) -> [String] {
+        let pattern = #"<p(?:>|<em>)(.*?)</p>"#
+        let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive, .dotMatchesLineSeparators])
+        let range = NSRange(location: 0, length: bodyHTML.utf16.count)
+
+        return regex?.matches(in: bodyHTML, options: [], range: range).compactMap { match in
+            guard let fragmentRange = Range(match.range(at: 1), in: bodyHTML) else {
+                return nil
+            }
+
+            var fragment = String(bodyHTML[fragmentRange])
+            fragment = fragment.replacingOccurrences(of: #"(?i)<br\s*/?>"#, with: "\n", options: .regularExpression)
+            fragment = fragment.replacingOccurrences(of: #"</?e>"#, with: "", options: [.regularExpression, .caseInsensitive])
+
+            guard let text = try? SwiftSoup.parseBodyFragment(fragment).text() else {
+                return nil
+            }
+
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        } ?? []
+    }
     
     private static func archiveDate() throws -> Date {
         let startDate = "2011-11-12"
         let endDate = "2026-02-04"
+        let ignoredDates: Set<String> = ["2022-09-11", "2023-10-28", "2023-10-29"]
         
         let inputFormatter = DateFormatter()
         inputFormatter.dateFormat = "yyyy-MM-dd"
         let start = inputFormatter.date(from: startDate)!
         let end = inputFormatter.date(from: endDate)!
         let totalDays = Calendar.current.dateComponents([.day], from: start, to: end).day! + 1
+        let archiveDates = (0..<totalDays).compactMap { offset -> Date? in
+            guard let date = Calendar.current.date(byAdding: .day, value: offset, to: start) else {
+                return nil
+            }
+
+            return ignoredDates.contains(inputFormatter.string(from: date)) ? nil : date
+        }
+        guard !archiveDates.isEmpty else {
+            throw NSError(domain: "GermanEveryday", code: 1, userInfo: [NSLocalizedDescriptionKey: "No German Everyday archive dates available."])
+        }
+
         let today = Calendar.current.startOfDay(for: Date())
         let daysSinceStart = Calendar.current.dateComponents([.day], from: start, to: today).day!
-        let dayOffset = ((daysSinceStart % totalDays) + totalDays) % totalDays
-        return Calendar.current.date(byAdding: .day, value: dayOffset, to: start)!
+        let dayOffset = ((daysSinceStart % archiveDates.count) + archiveDates.count) % archiveDates.count
+        return archiveDates[dayOffset]
     }
 
     static func fetchSource() async throws -> (String, String, String, String) {
@@ -45,8 +80,6 @@ class GermanEveryday: Source {
         let body: String = bodyHTML.isEmpty ? try doc.select("item description")[0].text() : try SwiftSoup.parseBodyFragment(bodyHTML).text()
         let partOfSpeech: String = try doc.select("item category")[0].text().lowercased()
         
-        let pattern = "<p>(.*?) : (.*?)</p>.*?<p>(.*?)</p>.*?<p>(.*?)</em></p>"
-        let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive, .dotMatchesLineSeparators])
         let fallbackPattern = #"^\s*(.+?)\s+([„"“‚']?[A-ZÄÖÜ][^)\s.!?]*\s+[a-zäöüß].+?[.!?])\s*([A-Z"“].+?)\s*$"#
         let fallbackRegex = try? NSRegularExpression(pattern: fallbackPattern)
         
@@ -54,19 +87,30 @@ class GermanEveryday: Source {
         var translation: String = ""
         var sentenceGerman: String = ""
         var sentenceEnglish: String = ""
-        if let match = regex?.firstMatch(in: bodyHTML, options: [], range: NSRange(location: 0, length: bodyHTML.utf16.count)) {
-            if let translationRange = Range(match.range(at: 2), in: bodyHTML) {
-                translation = String(bodyHTML[translationRange]).capitalizingFirstLetter()
+        let paragraphs = paragraphTexts(from: bodyHTML)
+        if !paragraphs.isEmpty {
+            let prefix = "\(word) : "
+            let firstParagraph = paragraphs[0]
+            translation = firstParagraph.hasPrefix(prefix)
+                ? String(firstParagraph.dropFirst(prefix.count)).capitalizingFirstLetter()
+                : firstParagraph.capitalizingFirstLetter()
+
+            if paragraphs.count > 1 {
+                if paragraphs[1].contains("\n") {
+                    let parts = paragraphs[1].split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: true).map(String.init)
+                    sentenceGerman = parts.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    sentenceEnglish = parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespacesAndNewlines) : ""
+                } else {
+                    sentenceGerman = paragraphs[1]
+                }
             }
-            
-            if let sentenceGermanRange = Range(match.range(at: 3), in: bodyHTML) {
-                sentenceGerman = String(bodyHTML[sentenceGermanRange])
+
+            if sentenceEnglish.isEmpty, paragraphs.count > 2 {
+                sentenceEnglish = paragraphs[2].replacingOccurrences(of: #"^\([^)]*\)\s*"#, with: "", options: .regularExpression)
             }
-            
-            if let sentenceEnglishRange = Range(match.range(at: 4), in: bodyHTML) {
-                sentenceEnglish = String(bodyHTML[sentenceEnglishRange])
-            }
-        } else {
+        }
+
+        if translation.isEmpty {
             let bodyWithoutWordPrefix: String
             if body.hasPrefix("\(word) : ") {
                 bodyWithoutWordPrefix = String(body.dropFirst(word.count + 3))
