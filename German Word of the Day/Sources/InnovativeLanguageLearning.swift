@@ -14,8 +14,12 @@ class InnovativeLanguageLearning: Source {
         let url = URL(string: "https://www.innovativelanguage.com/widgets/wotd/large.php")
         var request = URLRequest(url: url!)
         request.httpMethod = "POST"
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         let payload = "language=German&date=".data(using: .utf8)
-        let (data, _) = try await URLSession.shared.upload(for: request, from: payload!)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.urlCache = nil
+        let session = URLSession(configuration: configuration)
+        let (data, _) = try await session.upload(for: request, from: payload!)
         
         let doc: Document = try SwiftSoup.parse(String(data: data, encoding: .utf8)!)
         let list1: Elements = try doc.select(".wotd-widget-sentence-main-space-text")
