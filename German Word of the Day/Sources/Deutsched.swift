@@ -67,7 +67,7 @@ class Deutsched: Source {
             let examples = "\(sentenceGerman)\n\(sentenceEnglish)"
             let lowercaseWord = rawWord.lowercased()
             let word = rawWord.replacingOccurrences(
-                of: #"\s+\((?:v|adj|adv)\.\)$"#,
+                of: #"\s+\((?:v|adj|adv|conj)\.\)$"#,
                 with: "",
                 options: [.regularExpression, .caseInsensitive]
             )
@@ -81,6 +81,8 @@ class Deutsched: Source {
                 type = "Adjective"
             } else if lowercaseWord.contains("(adv.)") {
                 type = "Adverb"
+            } else if lowercaseWord.contains("(conj.)") {
+                type = "Conjunction"
             } else {
                 type = ""
             }
